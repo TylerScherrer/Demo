@@ -40,10 +40,13 @@ def generate_forecast_summary():
         return jsonify({"error": "missing forecastSummary"}), 400
 
     prompt = (
-        f"Summarize this sales forecast for presentation:\n"
-        f"- Total sales: ${forecast['totalPredicted']} over {forecast['weeks']} weeks.\n"
-        f"- 95% confidence range: ${forecast['confidence_low']} – ${forecast['confidence_high']}."
+        "You are a helpful assistant that writes professional business summaries.\n\n"
+        f"Given the following forecast data, generate a clear, concise summary suitable for a stakeholder presentation:\n"
+        f"- Total predicted sales: ${forecast['totalPredicted']:,} over the next {forecast['weeks']} weeks.\n"
+        f"- 95% confidence interval: ${forecast['confidence_low']:,} – ${forecast['confidence_high']:,}.\n\n"
+        "Format your response in 1–2 well-written sentences that sound natural, data-aware, and presentation-ready."
     )
+
     logging.debug("[ai_summary] prompt: %s", prompt)
 
     try:

@@ -113,7 +113,8 @@ from routes.ai_feature_importance import ai_feature_importance_bp
 
 # === Register blueprints ===
 app.register_blueprint(chat_bp, url_prefix="/api")
-app.register_blueprint(stores_bp, url_prefix="/stores")
+app.register_blueprint(stores_bp, url_prefix="/api/stores")
+
 app.register_blueprint(metrics_bp, url_prefix="/metrics")
 app.register_blueprint(compare_bp, url_prefix="/compare")
 app.register_blueprint(predict_bp, url_prefix="/predict")

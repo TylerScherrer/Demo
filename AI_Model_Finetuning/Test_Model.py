@@ -12,7 +12,7 @@ model = AutoModelForCausalLM.from_pretrained(model_path, local_files_only=True)
 model.eval()
 
 # Load all prompts once
-input_file = Path(r"D:\ML Resume\prompt_dataset_20250603_225619.jsonl")
+input_file = Path(r"D:\ML Resume\prompts_cot_2000.jsonl")
 with input_file.open("r", encoding="utf-8") as f:
     prompts = [json.loads(line) for line in f]
 
