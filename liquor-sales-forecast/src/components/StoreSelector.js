@@ -1,10 +1,11 @@
 import React from "react";
 
-function StoreSelector({ storeList, selectedStore, setSelectedStore }) {
+export default function StoreSelector({ storeList, selectedStore, setSelectedStore }) {
   return (
     <div>
-      <label><strong>Store:</strong>{" "}</label>
+      <label htmlFor="store"><strong>Store:</strong>{" "}</label>
       <select
+        id="store"
         value={selectedStore}
         onChange={(e) => setSelectedStore(e.target.value)}
       >
@@ -18,5 +19,3 @@ function StoreSelector({ storeList, selectedStore, setSelectedStore }) {
     </div>
   );
 }
-
-export default StoreSelector;
