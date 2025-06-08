@@ -1,47 +1,49 @@
 import React, { useEffect, useState } from "react";
-import StoreSelector from "./components/StoreSelector";
+import ForecastChart from "./components/ForecastChart";
 
-function App() {
+export default function App() {
   const [storeList, setStoreList] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
   const [forecast, setForecast] = useState([]);
   const [error, setError] = useState("");
 
+  const BASE_URL = "http://localhost:8000"; // Update if using a deployed API
+
+  // Load stores on initial render
   useEffect(() => {
-    fetch("http://localhost:8000/api/stores")
+    fetch(`${BASE_URL}/api/stores`)
       .then((res) => res.json())
       .then((data) => setStoreList(data.stores || []))
       .catch((err) => {
-        console.error("Failed to load stores:", err);
-        setStoreList([]);
+        console.error("❌ Failed to load stores:", err);
+        setError("Could not load store list");
       });
   }, []);
 
-  // Click handler to fetch forecast
-  const fetchForecast = async () => {
+  // Handle forecast request
+  const handleForecast = async () => {
     if (!selectedStore) {
-      setError("Please select a store");
+      setError("Please select a store.");
       return;
     }
 
-    setError("");
-    setForecast([]);
-
     try {
-      const res = await fetch("http://localhost:8000/api/predict", {
+      setError("");
+      const res = await fetch(`${BASE_URL}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ store: selectedStore, weeks: 4 }),
       });
 
       const data = await res.json();
-      if (data.prediction) {
-        setForecast(data.prediction);
-      } else {
+      if (!data.prediction) {
+        setForecast([]);
         setError("No forecast returned");
+      } else {
+        setForecast(data.prediction);
       }
     } catch (err) {
-      console.error("Forecast fetch error:", err);
+      console.error("❌ Forecast request failed:", err);
       setError("Backend error");
     }
   };
@@ -50,38 +52,46 @@ function App() {
     <div style={{ margin: "30px", fontFamily: "Arial" }}>
       <h1>Liquor Sales Forecast</h1>
 
-      <StoreSelector
-        storeList={storeList}
-        selectedStore={selectedStore}
-        setSelectedStore={setSelectedStore}
-      />
-
-      {selectedStore && (
-        <p style={{ marginTop: "20px" }}>
-          You selected store <strong>{selectedStore}</strong>
-        </p>
-      )}
-
-      <button onClick={fetchForecast} style={{ marginTop: "20px" }}>
-        Get Forecast
-      </button>
-
       {error && <p style={{ color: "red" }}>{error}</p>}
 
+      {/* Store Selection */}
+      <div style={{ marginBottom: "15px" }}>
+        <label><strong>Store:</strong>{" "}</label>
+        <select
+          value={selectedStore}
+          onChange={(e) => setSelectedStore(e.target.value)}
+        >
+          <option value="">Select store</option>
+          {storeList.map((store) => (
+            <option key={store} value={store}>
+              {store}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Forecast Button */}
+      <button onClick={handleForecast}>Get Forecast</button>
+
+      {/* Forecast Results */}
       {forecast.length > 0 && (
-        <div style={{ marginTop: "20px" }}>
+        <div style={{ marginTop: "30px" }}>
           <h2>Forecast Results</h2>
           <ul>
-            {forecast.map((item) => (
-              <li key={item.week}>
-                Week {item.week}: {item.predicted} (±{item.upper - item.predicted})
-              </li>
-            ))}
+            {forecast.map((item) => {
+              const range = Math.round((item.upper - item.predicted) * 100) / 100;
+              return (
+                <li key={item.week}>
+                  Week {item.week}: {item.predicted} (±{range})
+                </li>
+              );
+            })}
           </ul>
+
+          {/* Chart Visualization */}
+          <ForecastChart data={forecast} />
         </div>
       )}
     </div>
   );
 }
-
-export default App;
