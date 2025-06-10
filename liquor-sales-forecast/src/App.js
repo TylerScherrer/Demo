@@ -5,11 +5,11 @@ export default function App() {
   const [storeList, setStoreList] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
   const [forecast, setForecast] = useState([]);
+  const [summary, setSummary] = useState("");
   const [error, setError] = useState("");
 
-  const BASE_URL = "http://localhost:8000"; // Update if using a deployed API
+  const BASE_URL = "http://localhost:8000";
 
-  // Load stores on initial render
   useEffect(() => {
     fetch(`${BASE_URL}/api/stores`)
       .then((res) => res.json())
@@ -20,7 +20,6 @@ export default function App() {
       });
   }, []);
 
-  // Handle forecast request
   const handleForecast = async () => {
     if (!selectedStore) {
       setError("Please select a store.");
@@ -29,6 +28,7 @@ export default function App() {
 
     try {
       setError("");
+      setSummary("");
       const res = await fetch(`${BASE_URL}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,10 +41,26 @@ export default function App() {
         setError("No forecast returned");
       } else {
         setForecast(data.prediction);
+        explainForecast(data.prediction);
       }
     } catch (err) {
       console.error("❌ Forecast request failed:", err);
       setError("Backend error");
+    }
+  };
+
+  const explainForecast = async (forecastData) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/explain_forecast`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forecast: forecastData }),
+      });
+      const data = await res.json();
+      setSummary(data.summary || "No explanation returned");
+    } catch (err) {
+      console.error("❌ Explanation fetch failed:", err);
+      setSummary("Failed to generate explanation");
     }
   };
 
@@ -54,7 +70,6 @@ export default function App() {
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      {/* Store Selection */}
       <div style={{ marginBottom: "15px" }}>
         <label><strong>Store:</strong>{" "}</label>
         <select
@@ -63,17 +78,13 @@ export default function App() {
         >
           <option value="">Select store</option>
           {storeList.map((store) => (
-            <option key={store} value={store}>
-              {store}
-            </option>
+            <option key={store} value={store}>{store}</option>
           ))}
         </select>
       </div>
 
-      {/* Forecast Button */}
       <button onClick={handleForecast}>Get Forecast</button>
 
-      {/* Forecast Results */}
       {forecast.length > 0 && (
         <div style={{ marginTop: "30px" }}>
           <h2>Forecast Results</h2>
@@ -88,8 +99,14 @@ export default function App() {
             })}
           </ul>
 
-          {/* Chart Visualization */}
           <ForecastChart data={forecast} />
+
+          {summary && (
+            <div style={{ marginTop: "20px", background: "#f2f2f2", padding: "10px" }}>
+              <strong>AI Explanation:</strong>
+              <p>{summary}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
