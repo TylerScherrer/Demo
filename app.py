@@ -81,12 +81,22 @@ def predict():
         if store_df.empty:
             return jsonify({"error": f"No data found for store {store}"}), 404
 
-        latest_row = store_df.sort_values("Date").iloc[-1:].copy() if "Date" in store_df.columns else store_df.iloc[-1:].copy()
+        timeline = []
+
+        # Historical sales (last 6 weeks)
+        history_rows = store_df.iloc[-6:]
+        for i, row in enumerate(history_rows.itertuples(), start=-6):
+            timeline.append({
+                "week": i,
+                "type": "actual",
+                "value": round(float(row.Total_Sales))
+            })
+
+        latest_row = store_df.iloc[-1:].copy()
         for col in model_features:
             if col not in latest_row.columns:
                 latest_row[col] = 0
 
-        forecast = []
         lag_values = [latest_row[col].values[0] for col in ['Lag_1', 'Lag_2', 'Lag_3', 'Lag_12']]
 
         for week in range(1, weeks + 1):
@@ -104,14 +114,15 @@ def predict():
             y = model.predict(temp)[0]
             lag_values.append(y)
 
-            forecast.append({
+            timeline.append({
                 "week": week,
-                "predicted": round(float(y), 2),
+                "type": "forecast",
+                "value": round(float(y), 2),
                 "lower": round(float(y) * 0.9, 2),
                 "upper": round(float(y) * 1.1, 2)
             })
 
-        return jsonify({"prediction": forecast})
+        return jsonify({"timeline": timeline})
 
     except Exception as e:
         print(f"❌ Exception in /api/predict: {e}")
@@ -124,15 +135,25 @@ def explain_forecast():
 
     try:
         data = request.get_json()
-        forecast = data.get("forecast")
+        timeline = data.get("timeline")
 
-        if not forecast:
+        print("🧪 Raw /api/explain_forecast input:", timeline)  # 🔍 Log timeline
+
+        if not timeline:
+            print("⚠️ Timeline is missing or empty.")
             return jsonify({"error": "No forecast provided"}), 400
+
+        forecast_part = [f for f in timeline if f["type"] == "forecast"]
+        if not forecast_part:
+            print("⚠️ No forecast entries found in timeline.")
+            return jsonify({"summary": "No forecast data available for explanation."})
 
         prompt = (
             "Analyze the following liquor sales forecast and explain the trend to a beginner:\n\n"
-            + "\n".join([f"Week {f['week']}: {f['predicted']}" for f in forecast])
+            + "\n".join([f"Week {f['week']}: {f['value']}" for f in forecast_part])
         )
+
+        print("📤 Prompt to model:\n", prompt)  # 🔍 Log prompt
 
         inputs = tokenizer(prompt, return_tensors="pt", padding=True)
         outputs = phi_model.generate(
@@ -149,11 +170,14 @@ def explain_forecast():
         decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
         explanation = decoded[len(prompt):].strip() if decoded.startswith(prompt) else decoded.strip()
 
+        print("📬 AI Explanation output:", explanation)  # 🔍 Log AI result
+
         return jsonify({"summary": explanation or "The forecast suggests a trend, but no summary was returned."})
 
     except Exception as e:
         print(f"❌ Phi-1.5 inference error: {e}")
         return jsonify({"error": "Failed to generate explanation"}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8000)

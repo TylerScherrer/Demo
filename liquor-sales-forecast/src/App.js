@@ -4,7 +4,7 @@ import ForecastChart from "./components/ForecastChart";
 export default function App() {
   const [storeList, setStoreList] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
-  const [forecast, setForecast] = useState([]);
+  const [timeline, setTimeline] = useState([]);
   const [summary, setSummary] = useState("");
   const [error, setError] = useState("");
 
@@ -29,6 +29,8 @@ export default function App() {
     try {
       setError("");
       setSummary("");
+      setTimeline([]);
+
       const res = await fetch(`${BASE_URL}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -36,36 +38,46 @@ export default function App() {
       });
 
       const data = await res.json();
-      if (!data.prediction) {
-        setForecast([]);
-        setError("No forecast returned");
-      } else {
-        setForecast(data.prediction);
-        explainForecast(data.prediction);
+
+      if (!data.timeline || data.timeline.length === 0) {
+        setError("No forecast returned.");
+        return;
       }
+
+      setTimeline(data.timeline);
+
+      // ✅ Send entire timeline (not just forecast) to explanation
+      explainForecast(data.timeline);
+
     } catch (err) {
       console.error("❌ Forecast request failed:", err);
       setError("Backend error");
     }
   };
 
-  const explainForecast = async (forecastData) => {
-    try {
-      const res = await fetch(`${BASE_URL}/api/explain_forecast`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forecast: forecastData }),
-      });
-      const data = await res.json();
-      setSummary(data.summary || "No explanation returned");
-    } catch (err) {
-      console.error("❌ Explanation fetch failed:", err);
-      setSummary("Failed to generate explanation");
-    }
-  };
+const explainForecast = async (timelineData) => {
+  console.log("🧪 Timeline data sent to /api/explain_forecast:", timelineData); // 🔍 Add this line
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/explain_forecast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timeline: timelineData }),
+    });
+
+    const data = await res.json();
+    console.log("📥 Explanation response:", data); // 🔍 Log response
+
+    setSummary(data.summary || "No explanation returned.");
+  } catch (err) {
+    console.error("❌ Explanation request failed:", err);
+    setSummary("Failed to generate explanation.");
+  }
+};
+
 
   return (
-    <div style={{ margin: "30px", fontFamily: "Arial" }}>
+    <div style={{ margin: "30px", fontFamily: "Arial, sans-serif" }}>
       <h1>Liquor Sales Forecast</h1>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
@@ -81,25 +93,31 @@ export default function App() {
             <option key={store} value={store}>{store}</option>
           ))}
         </select>
+        <button style={{ marginLeft: "10px" }} onClick={handleForecast}>
+          Get Forecast
+        </button>
       </div>
 
-      <button onClick={handleForecast}>Get Forecast</button>
-
-      {forecast.length > 0 && (
-        <div style={{ marginTop: "30px" }}>
-          <h2>Forecast Results</h2>
+      {timeline.length > 0 && (
+        <div>
+          <h2>Results</h2>
           <ul>
-            {forecast.map((item) => {
-              const range = Math.round((item.upper - item.predicted) * 100) / 100;
+            {timeline.map((item) => {
+              const value = item.value;
+              const label = item.type === "forecast" ? "Forecast" : "Actual";
+              const range = item.upper
+                ? ` (±${Math.round((item.upper - item.value) * 100) / 100})`
+                : "";
+
               return (
                 <li key={item.week}>
-                  Week {item.week}: {item.predicted} (±{range})
+                  Week {item.week}: {value} [{label}]{range}
                 </li>
               );
             })}
           </ul>
 
-          <ForecastChart data={forecast} />
+          <ForecastChart data={timeline} />
 
           {summary && (
             <div style={{ marginTop: "20px", background: "#f2f2f2", padding: "10px" }}>
