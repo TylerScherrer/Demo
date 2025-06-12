@@ -66,6 +66,23 @@ export default function App() {
       setSummary("Failed to generate explanation.");
     }
   };
+  
+  const forecastWeeks = timeline.filter(w => w.type === "forecast");
+
+  const totalForecast = forecastWeeks.reduce((sum, w) => sum + w.value, 0);
+  const avgForecast = forecastWeeks.length > 0 ? totalForecast / forecastWeeks.length : 0;
+
+  let growthSummary = "—";
+  if (forecastWeeks.length > 1) {
+    const deltas = forecastWeeks.slice(1).map((w, i) => {
+      const prev = forecastWeeks[i].value;
+      const delta = ((w.value - prev) / prev) * 100;
+      return { week: w.week, delta };
+    });
+
+    const signs = deltas.map(d => `${d.delta >= 0 ? "↑" : "↓"} ${Math.abs(d.delta).toFixed(1)}% (Week ${d.week})`);
+    growthSummary = signs.join(", ");
+  }
 
   return (
     <div className="container">
@@ -120,6 +137,23 @@ export default function App() {
 
           <ForecastChart data={timeline} />
 
+
+          {timeline.length > 0 && (
+            <>
+              {/* ForecastChart here... */}
+
+              {/* 📊 Growth Metrics */}
+              <div className="metric-box">
+                <h3>📊 Growth Metrics</h3>
+                <ul>
+                  <li><strong>Total Forecasted Sales:</strong> ${totalForecast.toLocaleString()}</li>
+                  <li><strong>Average Weekly Forecast:</strong> ${avgForecast.toLocaleString()}</li>
+                  <li><strong>Week-over-Week Growth:</strong> {growthSummary}</li>
+                </ul>
+              </div>
+            </>
+          )}
+              
           {summary && (
             <div className="ai-box">
               <h3>AI-Generated Insight:</h3>
