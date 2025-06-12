@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ForecastChart from "./components/ForecastChart";
+import "./App.css";
 
 export default function App() {
   const [storeList, setStoreList] = useState([]);
@@ -16,7 +17,7 @@ export default function App() {
       .then((data) => setStoreList(data.stores || []))
       .catch((err) => {
         console.error("❌ Failed to load stores:", err);
-        setError("Could not load store list");
+        setError("Could not load store list.");
       });
   }, []);
 
@@ -38,53 +39,44 @@ export default function App() {
       });
 
       const data = await res.json();
-
       if (!data.timeline || data.timeline.length === 0) {
         setError("No forecast returned.");
         return;
       }
 
       setTimeline(data.timeline);
-
-      // ✅ Send entire timeline (not just forecast) to explanation
       explainForecast(data.timeline);
-
     } catch (err) {
       console.error("❌ Forecast request failed:", err);
       setError("Backend error");
     }
   };
 
-const explainForecast = async (timelineData) => {
-  console.log("🧪 Timeline data sent to /api/explain_forecast:", timelineData); // 🔍 Add this line
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/explain_forecast`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ timeline: timelineData }),
-    });
-
-    const data = await res.json();
-    console.log("📥 Explanation response:", data); // 🔍 Log response
-
-    setSummary(data.summary || "No explanation returned.");
-  } catch (err) {
-    console.error("❌ Explanation request failed:", err);
-    setSummary("Failed to generate explanation.");
-  }
-};
-
+  const explainForecast = async (timelineData) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/explain_forecast`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeline: timelineData }),
+      });
+      const data = await res.json();
+      setSummary(data.summary || "No explanation returned.");
+    } catch (err) {
+      console.error("❌ Explanation request failed:", err);
+      setSummary("Failed to generate explanation.");
+    }
+  };
 
   return (
-    <div style={{ margin: "30px", fontFamily: "Arial, sans-serif" }}>
-      <h1>Liquor Sales Forecast</h1>
+    <div className="container">
+      <h1 className="title">📊 Liquor Sales Forecast</h1>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="error">{error}</p>}
 
-      <div style={{ marginBottom: "15px" }}>
-        <label><strong>Store:</strong>{" "}</label>
+      <div className="control-row">
+        <label htmlFor="store-select"><strong>Store:</strong></label>
         <select
+          id="store-select"
           value={selectedStore}
           onChange={(e) => setSelectedStore(e.target.value)}
         >
@@ -93,39 +85,48 @@ const explainForecast = async (timelineData) => {
             <option key={store} value={store}>{store}</option>
           ))}
         </select>
-        <button style={{ marginLeft: "10px" }} onClick={handleForecast}>
-          Get Forecast
-        </button>
+        <button className="btn" onClick={handleForecast}>Get Forecast</button>
       </div>
 
       {timeline.length > 0 && (
-        <div>
-          <h2>Results</h2>
-          <ul>
-            {timeline.map((item) => {
-              const value = item.value;
-              const label = item.type === "forecast" ? "Forecast" : "Actual";
-              const range = item.upper
-                ? ` (±${Math.round((item.upper - item.value) * 100) / 100})`
-                : "";
-
-              return (
-                <li key={item.week}>
-                  Week {item.week}: {value} [{label}]{range}
-                </li>
-              );
-            })}
-          </ul>
+        <>
+          <h2 className="section-heading">Forecast Results</h2>
+          <table className="result-table">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>Type</th>
+                <th>Sales ($)</th>
+                <th>Range (±)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {timeline.map((item) => {
+                const isForecast = item.type === "forecast";
+                const range = isForecast
+                  ? Math.round(item.upper - item.value).toLocaleString()
+                  : "—";
+                return (
+                  <tr key={item.week} className={isForecast ? "forecast-row" : "actual-row"}>
+                    <td>{`Week ${item.week}`}</td>
+                    <td>{isForecast ? "Forecast" : "Actual"}</td>
+                    <td>${item.value.toLocaleString()}</td>
+                    <td>{range !== "—" ? `±${range}` : range}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
           <ForecastChart data={timeline} />
 
           {summary && (
-            <div style={{ marginTop: "20px", background: "#f2f2f2", padding: "10px" }}>
-              <strong>AI Explanation:</strong>
+            <div className="ai-box">
+              <h3>AI-Generated Insight:</h3>
               <p>{summary}</p>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
