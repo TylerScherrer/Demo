@@ -5,6 +5,7 @@ import "./App.css";
 export default function App() {
   const [storeList, setStoreList] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
+  const [forecastWeeks, setForecastWeeks] = useState(4);
   const [timeline, setTimeline] = useState([]);
   const [summary, setSummary] = useState("");
   const [error, setError] = useState("");
@@ -35,7 +36,7 @@ export default function App() {
       const res = await fetch(`${BASE_URL}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ store: selectedStore, weeks: 4 }),
+        body: JSON.stringify({ store: selectedStore, weeks: forecastWeeks }),
       });
 
       const data = await res.json();
@@ -66,16 +67,16 @@ export default function App() {
       setSummary("Failed to generate explanation.");
     }
   };
-  
-  const forecastWeeks = timeline.filter(w => w.type === "forecast");
 
-  const totalForecast = forecastWeeks.reduce((sum, w) => sum + w.value, 0);
-  const avgForecast = forecastWeeks.length > 0 ? totalForecast / forecastWeeks.length : 0;
+  const forecastWeeksOnly = timeline.filter(w => w.type === "forecast");
+
+  const totalForecast = forecastWeeksOnly.reduce((sum, w) => sum + w.value, 0);
+  const avgForecast = forecastWeeksOnly.length > 0 ? totalForecast / forecastWeeksOnly.length : 0;
 
   let growthSummary = "—";
-  if (forecastWeeks.length > 1) {
-    const deltas = forecastWeeks.slice(1).map((w, i) => {
-      const prev = forecastWeeks[i].value;
+  if (forecastWeeksOnly.length > 1) {
+    const deltas = forecastWeeksOnly.slice(1).map((w, i) => {
+      const prev = forecastWeeksOnly[i].value;
       const delta = ((w.value - prev) / prev) * 100;
       return { week: w.week, delta };
     });
@@ -102,6 +103,18 @@ export default function App() {
             <option key={store} value={store}>{store}</option>
           ))}
         </select>
+
+        <label htmlFor="weeks-select"><strong>Weeks:</strong></label>
+        <select
+          id="weeks-select"
+          value={forecastWeeks}
+          onChange={(e) => setForecastWeeks(parseInt(e.target.value))}
+        >
+          <option value={4}>4 Weeks</option>
+          <option value={8}>8 Weeks</option>
+          <option value={12}>12 Weeks</option>
+        </select>
+
         <button className="btn" onClick={handleForecast}>Get Forecast</button>
       </div>
 
@@ -137,23 +150,17 @@ export default function App() {
 
           <ForecastChart data={timeline} />
 
-
           {timeline.length > 0 && (
-            <>
-              {/* ForecastChart here... */}
-
-              {/* 📊 Growth Metrics */}
-              <div className="metric-box">
-                <h3>📊 Growth Metrics</h3>
-                <ul>
-                  <li><strong>Total Forecasted Sales:</strong> ${totalForecast.toLocaleString()}</li>
-                  <li><strong>Average Weekly Forecast:</strong> ${avgForecast.toLocaleString()}</li>
-                  <li><strong>Week-over-Week Growth:</strong> {growthSummary}</li>
-                </ul>
-              </div>
-            </>
+            <div className="metric-box">
+              <h3>📊 Growth Metrics</h3>
+              <ul>
+                <li><strong>Total Forecasted Sales:</strong> ${totalForecast.toLocaleString()}</li>
+                <li><strong>Average Weekly Forecast:</strong> ${avgForecast.toLocaleString()}</li>
+                <li><strong>Week-over-Week Growth:</strong> {growthSummary}</li>
+              </ul>
+            </div>
           )}
-              
+
           {summary && (
             <div className="ai-box">
               <h3>AI-Generated Insight:</h3>
