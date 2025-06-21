@@ -33,13 +33,23 @@ except Exception as e:
 try:
     model_name = "microsoft/phi-1_5"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token = tokenizer.eos_token  # Ensure pad_token is set
+    tokenizer.pad_token = tokenizer.eos_token  # Set pad token for batching
 
-    phi_model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto"
-    )
+    if torch.cuda.is_available():
+        phi_model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16,
+            low_cpu_mem_usage=True,
+            device_map="auto"
+        )
+    else:
+        phi_model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16,  # Float16 saves memory even on CPU
+            low_cpu_mem_usage=True,
+            device_map={"": "cpu"}  # Force CPU
+        )
+
     print("✅ Phi-1.5 model loaded with memory-safe config")
 except Exception as e:
     print(f"❌ Failed to load Phi-1.5: {e}")
@@ -55,6 +65,8 @@ model_features = [
     'Profit_Margin', 'Is_Promotion_Month', 'Average_Price'
 ]
 
+category_features = [col for col in df.columns if col.endswith("_Sales") and col != "Total_Sales"]
+
 @app.route("/")
 def home():
     return jsonify({"message": "🟢 ML Forecast API is running!"})
@@ -67,12 +79,20 @@ def get_stores():
         return jsonify({"error": "'Store Number' column missing"}), 500
     return jsonify({"stores": sorted(df["Store Number"].unique())})
 
+
+
 @app.route("/api/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()
+        print("🛠 Incoming prediction request data:", data)
+
+        if not data or "store" not in data:
+            return jsonify({"error": "Missing 'store' in request"}), 400
+
         store = int(data.get("store"))
         weeks = int(data.get("weeks", 4))
+
 
         if df is None or model is None:
             return jsonify({"error": "Model or dataset not available"}), 500
@@ -93,6 +113,18 @@ def predict():
             })
 
         latest_row = store_df.iloc[-1:].copy()
+
+        # Category Breakdown --
+
+        # === Category Breakdown Proportions ===
+        last_total = sum(latest_row[cat].values[0] for cat in category_features)
+        category_shares = {
+            cat.replace('_Sales', ''): (latest_row[cat].values[0] / last_total) if last_total > 0 else 0
+            for cat in category_features
+        }
+
+
+
         for col in model_features:
             if col not in latest_row.columns:
                 latest_row[col] = 0
@@ -114,13 +146,26 @@ def predict():
             y = model.predict(temp)[0]
             lag_values.append(y)
 
+            category_breakdown = {
+                cat: round(share * y, 2)
+                for cat, share in category_shares.items()
+                if share * y > 10 # optional filter to ignore tiny numbers 
+            }
+
             timeline.append({
                 "week": week,
                 "type": "forecast",
                 "value": round(float(y), 2),
                 "lower": round(float(y) * 0.9, 2),
-                "upper": round(float(y) * 1.1, 2)
+                "upper": round(float(y) * 1.1, 2),
+                "category_breakdown": category_breakdown
             })
+
+        print("📦 Final forecast timeline response:")
+        for row in timeline:
+            if row["type"] == "forecast":
+                print(f"Week {row['week']} ➜ ${row['value']:.2f}")
+                print("  Category Breakdown:", row.get("category_breakdown", "❌ Missing"))
 
         return jsonify({"timeline": timeline})
 
@@ -136,8 +181,7 @@ def explain_forecast():
     try:
         data = request.get_json()
         timeline = data.get("timeline")
-
-        print("🧪 Raw /api/explain_forecast input:", timeline)  # 🔍 Log timeline
+        print("🧪 Raw /api/explain_forecast input:", timeline)
 
         if not timeline:
             print("⚠️ Timeline is missing or empty.")
@@ -149,17 +193,26 @@ def explain_forecast():
             return jsonify({"summary": "No forecast data available for explanation."})
 
         prompt = (
-            "Analyze the following liquor sales forecast and explain the trend to a beginner:\n\n"
+            "Provide a concise and clear summary (without exercises or additional tasks) "
+            "analyzing the following liquor sales forecast for a store manager:\n\n"
             + "\n".join([f"Week {f['week']}: {f['value']}" for f in forecast_part])
         )
 
-        print("📤 Prompt to model:\n", prompt)  # 🔍 Log prompt
+        print("📤 Prompt to model:\n", prompt)
 
         inputs = tokenizer(prompt, return_tensors="pt", padding=True)
+        input_ids = inputs["input_ids"]
+        attention_mask = inputs["attention_mask"]
+
+        # 💡 Check for NaNs or Infs
+        if torch.isnan(input_ids).any() or torch.isinf(input_ids).any():
+            print("❌ NaN or Inf detected in input_ids")
+            return jsonify({"summary": "Input tensor invalid — NaN or Inf detected."})
+
         outputs = phi_model.generate(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            max_new_tokens=120,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            max_new_tokens=100,
             pad_token_id=tokenizer.eos_token_id,
             do_sample=True,
             temperature=0.7,
@@ -167,16 +220,37 @@ def explain_forecast():
             top_p=0.95
         )
 
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        explanation = decoded[len(prompt):].strip() if decoded.startswith(prompt) else decoded.strip()
+        try:
+            decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            print("📜 Decoded response:", repr(decoded))
 
-        print("📬 AI Explanation output:", explanation)  # 🔍 Log AI result
+            # Try to strip the prompt if present
+            if decoded.startswith(prompt):
+                explanation = decoded[len(prompt):].strip()
+            else:
+                explanation = decoded.strip()
+
+            if not explanation or explanation.lower().startswith("exercise") or "graph" in explanation.lower():
+                print("⚠️ Unusable explanation, fallback triggered.")
+                explanation = "Sales are forecasted to decline over the next few weeks. Please monitor trends."
+
+        except Exception as decode_err:
+            print(f"❌ Decoding failed: {decode_err}")
+            explanation = "Model produced an unreadable result."
+
+
+        print("📬 AI Explanation output:", explanation)
 
         return jsonify({"summary": explanation or "The forecast suggests a trend, but no summary was returned."})
 
     except Exception as e:
         print(f"❌ Phi-1.5 inference error: {e}")
         return jsonify({"error": "Failed to generate explanation"}), 500
+
+
+
+
+
 
 
 if __name__ == "__main__":

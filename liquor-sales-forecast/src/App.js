@@ -60,13 +60,27 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timeline: timelineData }),
       });
+
+      if (!res.ok) {
+        // Server responded but with an error (e.g., 500)
+        console.error(`❌ Server responded with status ${res.status}`);
+        if (res.status === 500) {
+          setSummary("⚠️ Forecast explanation temporarily unavailable due to model loading issue.");
+        } else {
+          setSummary(`⚠️ Unexpected error (${res.status}) while generating explanation.`);
+        }
+        return;
+      }
+
       const data = await res.json();
-      setSummary(data.summary || "No explanation returned.");
+      setSummary(data.summary || "⚠️ No explanation returned.");
     } catch (err) {
+      // Network or JSON parsing error
       console.error("❌ Explanation request failed:", err);
-      setSummary("Failed to generate explanation.");
+      setSummary("⚠️ Failed to generate explanation due to a network or system error.");
     }
   };
+
 
   const forecastWeeksOnly = timeline.filter(w => w.type === "forecast");
 
@@ -130,22 +144,46 @@ export default function App() {
                 <th>Range (±)</th>
               </tr>
             </thead>
-            <tbody>
-              {timeline.map((item) => {
-                const isForecast = item.type === "forecast";
-                const range = isForecast
-                  ? Math.round(item.upper - item.value).toLocaleString()
-                  : "—";
-                return (
-                  <tr key={item.week} className={isForecast ? "forecast-row" : "actual-row"}>
-                    <td>{`Week ${item.week}`}</td>
-                    <td>{isForecast ? "Forecast" : "Actual"}</td>
-                    <td>${item.value.toLocaleString()}</td>
-                    <td>{range !== "—" ? `±${range}` : range}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
+            
+<tbody>
+  {timeline.map((item) => {
+    const isForecast = item.type === "forecast";
+    const range = isForecast
+      ? Math.round(item.upper - item.value).toLocaleString()
+      : "—";
+
+    return (
+      <React.Fragment key={item.week}>
+        <tr className={isForecast ? "forecast-row" : "actual-row"}>
+          <td>{`Week ${item.week}`}</td>
+          <td>{isForecast ? "Forecast" : "Actual"}</td>
+          <td>${item.value.toLocaleString()}</td>
+          <td>{range !== "—" ? `±${range}` : range}</td>
+        </tr>
+
+        {isForecast && item.category_breakdown && (
+          <tr className="breakdown-row">
+            <td colSpan="4">
+              <details>
+                <summary>🔍 Category Breakdown</summary>
+                <ul className="category-list">
+                  {Object.entries(item.category_breakdown)
+                    .sort(([, a], [, b]) => b - a) // descending order
+                    .map(([cat, val]) => (
+                      <li key={cat}>
+                        {cat.replace(/_/g, " ")}: ${val.toLocaleString()}
+                      </li>
+                    ))}
+                </ul>
+              </details>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  })}
+</tbody>
+
           </table>
 
           <ForecastChart data={timeline} />
