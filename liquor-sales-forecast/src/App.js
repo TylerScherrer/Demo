@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import ForecastChart from "./components/ForecastChart";
 import "./App.css";
+import dayjs from "dayjs";
+
 
 export default function App() {
   const [storeList, setStoreList] = useState([]);
@@ -155,7 +157,11 @@ export default function App() {
     return (
       <React.Fragment key={item.week}>
         <tr className={isForecast ? "forecast-row" : "actual-row"}>
-          <td>{`Week ${item.week}`}</td>
+          <td>
+            {item.week_start
+              ? `${dayjs(item.week_start).format("MMM D")} – ${dayjs(item.week_start).add(6, "day").format("MMM D")}`
+              : `Week ${item.week}`}
+          </td>
           <td>{isForecast ? "Forecast" : "Actual"}</td>
           <td>${item.value.toLocaleString()}</td>
           <td>{range !== "—" ? `±${range}` : range}</td>
@@ -165,10 +171,10 @@ export default function App() {
           <tr className="breakdown-row">
             <td colSpan="4">
               <details>
-                <summary>🔍 Category Breakdown</summary>
+                <summary>Category Breakdown</summary>
                 <ul className="category-list">
                   {Object.entries(item.category_breakdown)
-                    .sort(([, a], [, b]) => b - a) // descending order
+                    .sort(([, a], [, b]) => b - a)
                     .map(([cat, val]) => (
                       <li key={cat}>
                         {cat.replace(/_/g, " ")}: ${val.toLocaleString()}
@@ -182,6 +188,7 @@ export default function App() {
       </React.Fragment>
     );
   })}
+
 </tbody>
 
           </table>

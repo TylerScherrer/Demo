@@ -5,6 +5,8 @@ import os
 import pickle
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+from pandas import Timestamp
+from datetime import timedelta
 
 # === Initialize Flask App ===
 app = Flask(__name__)
@@ -106,13 +108,18 @@ def predict():
         # Historical sales (last 6 weeks)
         history_rows = store_df.iloc[-6:]
         for i, row in enumerate(history_rows.itertuples(), start=-6):
+            week_start = pd.to_datetime(row.Date).normalize()
             timeline.append({
                 "week": i,
                 "type": "actual",
-                "value": round(float(row.Total_Sales))
+                "value": round(float(row.Total_Sales)),
+                "week_start": week_start.strftime("%Y-%m-%d")
             })
 
         latest_row = store_df.iloc[-1:].copy()
+
+        latest_date = latest_row["Date"].values[0]
+        latest_week_start = pd.to_datetime(latest_date) - pd.to_datetime(latest_date).weekday() * timedelta(days = 1)
 
         # Category Breakdown --
 
@@ -132,6 +139,7 @@ def predict():
         lag_values = [latest_row[col].values[0] for col in ['Lag_1', 'Lag_2', 'Lag_3', 'Lag_12']]
 
         for week in range(1, weeks + 1):
+            forecast_week_start = latest_week_start + timedelta(weeks=week)
             temp = latest_row.copy()
             temp['Lag_1'] = lag_values[-1]
             temp['Lag_2'] = lag_values[-2] if len(lag_values) > 1 else lag_values[-1]
@@ -158,7 +166,8 @@ def predict():
                 "value": round(float(y), 2),
                 "lower": round(float(y) * 0.9, 2),
                 "upper": round(float(y) * 1.1, 2),
-                "category_breakdown": category_breakdown
+                "category_breakdown": category_breakdown,
+                "week_start": forecast_week_start.strftime("%Y-%m-%d"),
             })
 
         print("📦 Final forecast timeline response:")
