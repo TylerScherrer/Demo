@@ -67,7 +67,11 @@ model_features = [
     'Profit_Margin', 'Is_Promotion_Month', 'Average_Price'
 ]
 
-category_features = [col for col in df.columns if col.endswith("_Sales") and col != "Total_Sales"]
+category_features = [
+    col for col in df.columns
+    if col.endswith("_Sales") and col != "Total_Sales" and col in df.columns
+]
+
 
 @app.route("/")
 def home():
@@ -106,15 +110,23 @@ def predict():
         timeline = []
 
         # Historical sales (last 6 weeks)
-        history_rows = store_df.iloc[-6:]
+        # Convert date to datetime
+        store_df['Date'] = pd.to_datetime(store_df['Date'])
+
+        # Group by week
+        weekly_sales = store_df.groupby(pd.Grouper(key="Date", freq="W-MON"))["Total_Sales"].sum().reset_index().sort_values("Date")
+
+        # Select last 6 weeks
+        history_rows = weekly_sales.tail(6)
+
         for i, row in enumerate(history_rows.itertuples(), start=-6):
-            week_start = pd.to_datetime(row.Date).normalize()
             timeline.append({
                 "week": i,
                 "type": "actual",
                 "value": round(float(row.Total_Sales)),
-                "week_start": week_start.strftime("%Y-%m-%d")
+                "week_start": row.Date.strftime("%Y-%m-%d")  # for frontend formatting
             })
+
 
         latest_row = store_df.iloc[-1:].copy()
 
@@ -129,6 +141,7 @@ def predict():
             cat.replace('_Sales', ''): (latest_row[cat].values[0] / last_total) if last_total > 0 else 0
             for cat in category_features
         }
+
 
 
 
