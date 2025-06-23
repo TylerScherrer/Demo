@@ -157,12 +157,8 @@ export default function App() {
     return (
       <React.Fragment key={item.week}>
         <tr className={isForecast ? "forecast-row" : "actual-row"}>
-          <td>
-            {item.week_start
-              ? dayjs(item.week_start).format("MMMM YYYY")
-              : `Month ${item.week}`}
+          <td>{item.label}</td>
 
-          </td>
           <td>{isForecast ? "Forecast" : "Actual"}</td>
           <td>${item.value.toLocaleString()}</td>
           <td>{range !== "—" ? `±${range}` : range}</td>
