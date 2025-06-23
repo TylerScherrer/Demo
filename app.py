@@ -113,8 +113,9 @@ def predict():
         # Convert date to datetime
         store_df['Date'] = pd.to_datetime(store_df['Date'])
 
-        # Group by week
-        weekly_sales = store_df.groupby(pd.Grouper(key="Date", freq="W-MON"))["Total_Sales"].sum().reset_index().sort_values("Date")
+        weekly_sales = store_df.groupby(pd.Grouper(key="Date", freq="MS"))["Total_Sales"].sum().reset_index()
+
+
 
         # Select last 6 weeks
         history_rows = weekly_sales.tail(6)
@@ -124,14 +125,17 @@ def predict():
                 "week": i,
                 "type": "actual",
                 "value": round(float(row.Total_Sales)),
-                "week_start": row.Date.strftime("%Y-%m-%d")  # for frontend formatting
+                "month_start": row.Date.strftime("%Y-%m-%d"),
+                "label": row.Date.strftime("%B %Y")  # e.g., "January 2021"
             })
+
 
 
         latest_row = store_df.iloc[-1:].copy()
 
         latest_date = latest_row["Date"].values[0]
-        latest_week_start = pd.to_datetime(latest_date) - pd.to_datetime(latest_date).weekday() * timedelta(days = 1)
+        latest_week_start = pd.to_datetime(latest_date).replace(day=1)
+
 
         # Category Breakdown --
 
@@ -180,8 +184,10 @@ def predict():
                 "lower": round(float(y) * 0.9, 2),
                 "upper": round(float(y) * 1.1, 2),
                 "category_breakdown": category_breakdown,
-                "week_start": forecast_week_start.strftime("%Y-%m-%d"),
+                "month_start": forecast_week_start.strftime("%Y-%m-%d"),
+                "label": forecast_week_start.strftime("%B %Y")
             })
+
 
         print("📦 Final forecast timeline response:")
         for row in timeline:

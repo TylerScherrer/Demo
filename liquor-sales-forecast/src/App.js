@@ -140,7 +140,7 @@ export default function App() {
           <table className="result-table">
             <thead>
               <tr>
-                <th>Week</th>
+                <th>Month</th>
                 <th>Type</th>
                 <th>Sales ($)</th>
                 <th>Range (±)</th>
@@ -159,8 +159,9 @@ export default function App() {
         <tr className={isForecast ? "forecast-row" : "actual-row"}>
           <td>
             {item.week_start
-              ? `${dayjs(item.week_start).format("MMM D")} – ${dayjs(item.week_start).add(6, "day").format("MMM D")}`
-              : `Week ${item.week}`}
+              ? dayjs(item.week_start).format("MMMM YYYY")
+              : `Month ${item.week}`}
+
           </td>
           <td>{isForecast ? "Forecast" : "Actual"}</td>
           <td>${item.value.toLocaleString()}</td>
