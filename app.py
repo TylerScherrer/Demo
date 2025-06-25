@@ -97,7 +97,8 @@ def predict():
             return jsonify({"error": "Missing 'store' in request"}), 400
 
         store = int(data.get("store"))
-        weeks = int(data.get("weeks", 4))
+        months = int(data.get("months", 4))  # default to 4 months
+
 
 
         if df is None or model is None:
@@ -155,8 +156,8 @@ def predict():
 
         lag_values = [latest_row[col].values[0] for col in ['Lag_1', 'Lag_2', 'Lag_3', 'Lag_12']]
 
-        for week in range(1, weeks + 1):
-            forecast_week_start = latest_week_start + timedelta(weeks=week)
+        for i in range(1, months + 1):
+            forecast_month_start = (latest_week_start + pd.DateOffset(months=i)).replace(day=1)
             temp = latest_row.copy()
             temp['Lag_1'] = lag_values[-1]
             temp['Lag_2'] = lag_values[-2] if len(lag_values) > 1 else lag_values[-1]
@@ -178,21 +179,22 @@ def predict():
             }
 
             timeline.append({
-                "week": week,
+                "month": i,
                 "type": "forecast",
                 "value": round(float(y), 2),
                 "lower": round(float(y) * 0.9, 2),
                 "upper": round(float(y) * 1.1, 2),
                 "category_breakdown": category_breakdown,
-                "month_start": forecast_week_start.strftime("%Y-%m-%d"),
-                "label": forecast_week_start.strftime("%B %Y")
+                "month_start": forecast_month_start.strftime("%Y-%m-%d"),
+                "label": forecast_month_start.strftime("%B %Y")
             })
 
 
         print("📦 Final forecast timeline response:")
         for row in timeline:
             if row["type"] == "forecast":
-                print(f"Week {row['week']} ➜ ${row['value']:.2f}")
+                print(f"{row['label']} ➜ ${row['value']:.2f}")
+
                 print("  Category Breakdown:", row.get("category_breakdown", "❌ Missing"))
 
         return jsonify({"timeline": timeline})

@@ -16,12 +16,12 @@ export default function ForecastChart({ data }) {
   const formattedData = data.map((item) => ({
     ...item,
     label: `${item.type === "actual" ? "Actual" : "Forecast"}`,
-    displayWeek: `Week ${item.week}`
+    displayWeek: item.label || `Week ${item.week}`
   }));
 
   return (
     <div style={{ marginTop: "30px" }}>
-      <h3 style={{ textAlign: "left" }}>📉 Weekly Liquor Sales Forecast</h3>
+      <h3 style={{ textAlign: "left" }}>Monthly Liquor Sales Forecast</h3>
       <ResponsiveContainer width="100%" height={350}>
         <LineChart data={formattedData} margin={{ top: 10, right: 30, left: 20, bottom: 30 }}>
           <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
@@ -39,9 +39,8 @@ export default function ForecastChart({ data }) {
           />
           <Tooltip
             formatter={(value, name) => [`$${value.toLocaleString()}`, name]}
-            labelFormatter={(label, payload) =>
-              `${payload[0]?.payload.label || ""} – ${payload[0]?.payload.displayWeek}`
-            }
+            labelFormatter={(label) => label}
+
           />
           <Legend verticalAlign="top" height={36} />
 

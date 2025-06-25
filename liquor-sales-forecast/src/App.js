@@ -89,21 +89,25 @@ export default function App() {
   const totalForecast = forecastWeeksOnly.reduce((sum, w) => sum + w.value, 0);
   const avgForecast = forecastWeeksOnly.length > 0 ? totalForecast / forecastWeeksOnly.length : 0;
 
-  let growthSummary = "—";
-  if (forecastWeeksOnly.length > 1) {
-    const deltas = forecastWeeksOnly.slice(1).map((w, i) => {
-      const prev = forecastWeeksOnly[i].value;
-      const delta = ((w.value - prev) / prev) * 100;
-      return { week: w.week, delta };
-    });
+let growthSummary = "—";
+if (forecastWeeksOnly.length > 1) {
+  const deltas = forecastWeeksOnly.slice(1).map((m, i) => {
+    const prev = forecastWeeksOnly[i].value;
+    const delta = ((m.value - prev) / prev) * 100;
+    return { monthLabel: m.label, delta };
+  });
 
-    const signs = deltas.map(d => `${d.delta >= 0 ? "↑" : "↓"} ${Math.abs(d.delta).toFixed(1)}% (Week ${d.week})`);
-    growthSummary = signs.join(", ");
-  }
+  const signs = deltas.map(
+    (d) =>
+      `${d.delta >= 0 ? "↑" : "↓"} ${Math.abs(d.delta).toFixed(1)}% (${d.monthLabel})`
+  );
+  growthSummary = signs.join(", ");
+}
+
 
   return (
     <div className="container">
-      <h1 className="title">📊 Liquor Sales Forecast</h1>
+      <h1 className="title">Liquor Sales Forecast</h1>
 
       {error && <p className="error">{error}</p>}
 
@@ -194,11 +198,11 @@ export default function App() {
 
           {timeline.length > 0 && (
             <div className="metric-box">
-              <h3>📊 Growth Metrics</h3>
+              <h3>Growth Metrics</h3>
               <ul>
                 <li><strong>Total Forecasted Sales:</strong> ${totalForecast.toLocaleString()}</li>
-                <li><strong>Average Weekly Forecast:</strong> ${avgForecast.toLocaleString()}</li>
-                <li><strong>Week-over-Week Growth:</strong> {growthSummary}</li>
+                <li><strong>Average Monthly Forecast:</strong> ${avgForecast.toLocaleString()}</li>
+                <li><strong>Month-over-Month Growth:</strong> {growthSummary}</li>
               </ul>
             </div>
           )}
