@@ -224,9 +224,10 @@ def explain_forecast():
 
         prompt = (
             "Provide a concise and clear summary (without exercises or additional tasks) "
-            "analyzing the following liquor sales forecast for a store manager:\n\n"
-            + "\n".join([f"Week {f['week']}: {f['value']}" for f in forecast_part])
+            "analyzing the following monthly liquor sales forecast for a store manager:\n\n"
+            + "\n".join([f"{f['label']}: ${f['value']}" for f in forecast_part])
         )
+
 
         print("📤 Prompt to model:\n", prompt)
 
