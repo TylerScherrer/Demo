@@ -16,7 +16,8 @@ export default function ForecastChart({ data }) {
   const formattedData = data.map((item) => ({
     ...item,
     label: `${item.type === "actual" ? "Actual" : "Forecast"}`,
-    displayWeek: item.label || `Week ${item.week}`
+    displayLabel: item.label || `Month ${item.month}`
+
   }));
 
   return (
@@ -26,12 +27,12 @@ export default function ForecastChart({ data }) {
         <LineChart data={formattedData} margin={{ top: 10, right: 30, left: 20, bottom: 30 }}>
           <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
           <XAxis
-            dataKey="displayWeek"
+            dataKey="displayLabel"
             angle={-35}
             textAnchor="end"
             interval={0}
             height={60}
-            label={{ value: "Week", position: "insideBottomRight", offset: -10 }}
+            label={{ value: "Month", position: "insideBottomRight", offset: -10 }}
           />
           <YAxis
             label={{ value: "Sales ($)", angle: -90, position: "insideLeft", offset: -10 }}

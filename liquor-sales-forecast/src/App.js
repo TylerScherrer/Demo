@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 export default function App() {
   const [storeList, setStoreList] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
+  const [selectedStoreInfo, setSelectedStoreInfo] = useState(null);  // 🆕
   const [forecastWeeks, setForecastWeeks] = useState(4);
   const [timeline, setTimeline] = useState([]);
   const [summary, setSummary] = useState("");
@@ -85,6 +86,12 @@ export default function App() {
 
 
   const forecastWeeksOnly = timeline.filter(w => w.type === "forecast");
+  const actualWeeksOnly = timeline.filter(w => w.type === "actual");
+  const avgHistoricalSales = actualWeeksOnly.length > 0
+    ? actualWeeksOnly.reduce((sum, w) => sum + w.value, 0) / actualWeeksOnly.length
+    : 0;
+
+  const peakWeek = actualWeeksOnly.reduce((max, w) => w.value > max.value ? w : max, actualWeeksOnly[0] || {});
 
   const totalForecast = forecastWeeksOnly.reduce((sum, w) => sum + w.value, 0);
   const avgForecast = forecastWeeksOnly.length > 0 ? totalForecast / forecastWeeksOnly.length : 0;
@@ -112,17 +119,29 @@ if (forecastWeeksOnly.length > 1) {
       {error && <p className="error">{error}</p>}
 
       <div className="control-row">
-        <label htmlFor="store-select"><strong>Store:</strong></label>
-        <select
-          id="store-select"
-          value={selectedStore}
-          onChange={(e) => setSelectedStore(e.target.value)}
-        >
-          <option value="">Select store</option>
-          {storeList.map((store) => (
-            <option key={store} value={store}>{store}</option>
-          ))}
-        </select>
+      <label htmlFor="store-select"><strong>Store:</strong></label>
+      <select
+        id="store-select"
+        value={selectedStore}
+        onChange={(e) => {
+          const storeId = e.target.value;
+          setSelectedStore(storeId);
+
+          // 🔁 Find the full store info object and store it
+          const found = storeList.find(
+            (s) => s["Store Number"].toString() === storeId
+          );
+          setSelectedStoreInfo(found || null);
+        }}
+      >
+        <option value="">Select store</option>
+        {storeList.map((storeObj) => (
+          <option key={storeObj["Store Number"]} value={storeObj["Store Number"]}>
+            {storeObj["Store Number"]}
+          </option>
+        ))}
+      </select>
+
 
         <label htmlFor="weeks-select"><strong>Weeks:</strong></label>
         <select
@@ -189,6 +208,19 @@ if (forecastWeeksOnly.length > 1) {
       </React.Fragment>
     );
   })}
+{selectedStoreInfo && timeline.length > 0 && (
+  <div className="store-meta-box">
+    <h3> Store Info</h3>
+    <ul>
+      <li><strong>City:</strong> {selectedStoreInfo.City}</li>
+      <li><strong>County:</strong> {selectedStoreInfo.County}</li>
+      <li><strong>Store #:</strong> {selectedStoreInfo["Store Number"]}</li>
+      <li><strong>Avg Monthly Sales:</strong> ${avgHistoricalSales.toFixed(2)}</li>
+      <li><strong>Peak Month:</strong> {peakWeek.label} (${peakWeek.value.toLocaleString()})</li>
+    </ul>
+  </div>
+)}
+
 
 </tbody>
 

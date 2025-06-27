@@ -79,11 +79,38 @@ def home():
 
 @app.route("/api/stores", methods=["GET"])
 def get_stores():
-    if df is None:
-        return jsonify({"error": "features.csv not loaded"}), 500
-    if "Store Number" not in df.columns:
-        return jsonify({"error": "'Store Number' column missing"}), 500
-    return jsonify({"stores": sorted(df["Store Number"].unique())})
+    try:
+        if df is None:
+            print("❌ DataFrame is None")
+            return jsonify({"error": "features.csv not loaded"}), 500
+
+        print(f"✅ DataFrame loaded with columns: {list(df.columns)}")
+
+        required_columns = ["Store Number", "City", "County"]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+
+        if missing_columns:
+            print(f"❌ Missing required columns: {missing_columns}")
+            return jsonify({"error": f"Missing columns: {missing_columns}"}), 500
+
+        print("🔍 Filtering and deduplicating store info...")
+        store_info = (
+            df[["Store Number", "City", "County"]]
+            .dropna()
+            .drop_duplicates()
+            .sort_values("Store Number")
+            .to_dict(orient="records")
+        )
+
+        print(f"✅ Extracted {len(store_info)} unique store records.")
+        return jsonify({"stores": store_info})
+
+    except Exception as e:
+        print(f"❌ Exception in /api/stores: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+
 
 
 

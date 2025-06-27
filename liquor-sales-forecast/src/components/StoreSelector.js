@@ -10,11 +10,12 @@ export default function StoreSelector({ storeList, selectedStore, setSelectedSto
         onChange={(e) => setSelectedStore(e.target.value)}
       >
         <option value="">Select a store</option>
-        {storeList.map((storeId) => (
-          <option key={storeId} value={storeId}>
-            {storeId}
+        {storeList.map((storeObj) => (
+          <option key={storeObj["Store Number"]} value={storeObj["Store Number"]}>
+            {storeObj["Store Number"]}
           </option>
         ))}
+
       </select>
     </div>
   );
