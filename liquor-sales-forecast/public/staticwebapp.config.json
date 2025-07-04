@@ -1,0 +1,41 @@
+{
+    "routes": [
+      {
+        "route": "/api/*",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/api/:*"
+      },
+      {
+        "route": "/stores",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/stores"
+      },
+      {
+        "route": "/metrics",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/metrics"
+      },
+      {
+        "route": "/predict",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/predict"
+      },
+      {
+        "route": "/compare",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/compare"
+      },
+      {
+        "route": "/feature_importance",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/feature_importance"
+      },
+      {
+        "route": "/analysis/seasonality",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/analysis/seasonality"
+      },
+      {
+        "route": "/ai_summary",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/ai_summary"
+      },
+      {
+        "route": "/ai_feature_importance",
+        "rewrite": "https://ml-forecast-api-bpa9g0hscaccc0e0.canadacentral-01.azurewebsites.net/ai_feature_importance"
+      }
+    ]
+  }
+  

@@ -1,0 +1,10 @@
+Iowa_Liquor_Sales.csv
+features.csv
+*.pack
+*.pkl
+*.zip
+.DS_Store
+.vscode/
+__pycache__/
+node_modules/
+.env
