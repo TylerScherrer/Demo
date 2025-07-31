@@ -3,7 +3,6 @@ import ForecastChart from "./components/ForecastChart";
 import StoreSelector from "./components/StoreSelector";
 import StoreInfoBox from "./components/StoreInfoBox";
 import GrowthMetrics from "./components/GrowthMetrics";
-import AIInsight from "./components/AIInsight";
 import "./App.css";
 import dayjs from "dayjs";
 
@@ -13,7 +12,6 @@ export default function App() {
   const [selectedStoreInfo, setSelectedStoreInfo] = useState(null);
   const [forecastWeeks, setForecastWeeks] = useState(4);
   const [timeline, setTimeline] = useState([]);
-  const [summary, setSummary] = useState("");
   const [error, setError] = useState("");
 
   const BASE_URL = "http://localhost:8000";
@@ -36,7 +34,6 @@ export default function App() {
 
     try {
       setError("");
-      setSummary("");
       setTimeline([]);
 
       const res = await fetch(`${BASE_URL}/api/predict`, {
@@ -52,38 +49,10 @@ export default function App() {
       }
 
       setTimeline(data.timeline);
-      setSelectedStoreInfo(data.store_info || null);  // ✅ Add this line
-      explainForecast(data.timeline);
-
+      setSelectedStoreInfo(data.store_info || null);
     } catch (err) {
       console.error("❌ Forecast request failed:", err);
       setError("Backend error");
-    }
-  };
-
-  const explainForecast = async (timelineData) => {
-    try {
-      const res = await fetch(`${BASE_URL}/api/explain_forecast`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeline: timelineData }),
-      });
-
-      if (!res.ok) {
-        console.error(`❌ Server responded with status ${res.status}`);
-        if (res.status === 500) {
-          setSummary("⚠️ Forecast explanation temporarily unavailable due to model loading issue.");
-        } else {
-          setSummary(`⚠️ Unexpected error (${res.status}) while generating explanation.`);
-        }
-        return;
-      }
-
-      const data = await res.json();
-      setSummary(data.summary || "⚠️ No explanation returned.");
-    } catch (err) {
-      console.error("❌ Explanation request failed:", err);
-      setSummary("⚠️ Failed to generate explanation due to a network or system error.");
     }
   };
 
@@ -97,7 +66,7 @@ export default function App() {
   const peakWeek = actualWeeksOnly.reduce((max, w) => w.value > max.value ? w : max, actualWeeksOnly[0] || {});
 
   const totalForecast = forecastWeeksOnly.reduce((sum, w) => sum + w.value, 0);
-  const avgForecast = forecastWeeksOnly.length > 0 ? totalForecast / forecastWeeksOnly.length : 0;
+  const averageForecast = forecastWeeksOnly.length > 0 ? totalForecast / forecastWeeksOnly.length : 0;
 
   let growthSummary = "—";
   if (forecastWeeksOnly.length > 1) {
@@ -205,11 +174,9 @@ export default function App() {
 
           <GrowthMetrics
             totalForecast={totalForecast}
-            avgForecast={avgForecast}
+            avgForecast={averageForecast}
             growthSummary={growthSummary}
           />
-
-          <AIInsight summary={summary} />
         </>
       )}
     </div>

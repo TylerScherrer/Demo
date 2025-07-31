@@ -1,4 +1,3 @@
-# === File: main.py ===
 from flask import Flask, jsonify
 from flask_cors import CORS
 import pandas as pd
@@ -6,6 +5,7 @@ import os
 import pickle
 from routes import register_routes
 from dotenv import load_dotenv
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -16,12 +16,10 @@ base_path = os.path.dirname(__file__)
 df_path = os.path.join(base_path, "features.csv")
 model_path = os.path.join(base_path, "model.pkl")
 
-# Load dataset and ML model
 df = pd.read_csv(df_path)
 with open(model_path, "rb") as f:
     model = pickle.load(f)
 
-# Feature sets
 model_features = [
     'Lag_1', 'Lag_2', 'Lag_3', 'Rolling_3', 'Rolling_6', 'Rolling_12',
     'Rolling_Trend', 'Month', 'Quarter', 'IsYearStart', 'IsYearEnd',
@@ -33,15 +31,17 @@ category_features = [
     col for col in df.columns if col.endswith("_Sales") and col != "Total_Sales"
 ]
 
-# Register routes with shared context
 shared_context = {
     "df": df,
     "model": model,
     "model_features": model_features,
     "category_features": category_features,
-    # No phi_model or tokenizer anymore
 }
+
+# ✅ All routes now included here
 register_routes(app, shared_context)
+for rule in app.url_map.iter_rules():
+    print(f"🔗 Registered route: {rule} --> methods: {rule.methods}")
 
 @app.route("/")
 def home():
